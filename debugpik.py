@@ -64,7 +64,7 @@ else:
     remove_list = common_terms
 
 @st.cache_data(show_spinner=False)
-def load_stem_cache(path="E:\\DOWNLOAD\\stem_cache.json"):
+def load_stem_cache(path="stem_cache.json"):
     try:
         with open(path, 'r') as f:
             return json.load(f)
@@ -74,7 +74,7 @@ def load_stem_cache(path="E:\\DOWNLOAD\\stem_cache.json"):
 @st.cache_data(show_spinner=False)
 def get_stemmed_mapping(text_list):
     try:
-        with open("E:\\DOWNLOAD\\stem_cache.json", 'r') as f:
+        with open("stem_cache.json", 'r') as f:
             static_cache = json.load(f)
     except:
         static_cache = {}
@@ -85,7 +85,6 @@ def get_stemmed_mapping(text_list):
 
     def clean_and_stem(t):
         t = str(t).lower()
-        # Defining substitutions
         subs = {
             r"\bmasuk\b": "login",
             r"\blog-in\b": "login",
@@ -114,7 +113,6 @@ def get_stemmed_mapping(text_list):
 
     return {text: clean_and_stem(text) for text in text_list}
 
-# Fungsi pre-cleaning sebelum BERTopic
 @st.cache_data(show_spinner=False)
 def preprocess_text(text):
     def remove_dear_ojk(t):
@@ -311,7 +309,6 @@ min_dist = st.sidebar.slider("min_dist", 0.0, 0.99, 0.1, step=0.05)
 umap_metric = st.sidebar.selectbox("metric", ["cosine", "euclidean", "manhattan", "correlation"])
 random_state = st.sidebar.number_input("random_state UMAP", min_value=0, value=1337, step=1)
 
-# HDBSCAN parameters
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🗂️ HDBSCAN Settings")
 min_cluster_size = st.sidebar.slider("min_cluster_size", 2, 50, 10)
@@ -368,7 +365,6 @@ if st.button("Ekstraksi Topik"):
         lambda tid: "Outlier" if tid == -1 else f"{tid}: " + ", ".join([w for w, _ in topic_model.get_topic(tid)][:3])
     )
 
-    # Topic info sheet
     info_rows = []
     for row in topic_info.itertuples():
         tw = topic_model.get_topic(row.Topic)
