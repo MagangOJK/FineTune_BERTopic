@@ -10,3 +10,4 @@ hdbscan
 sentence-transformers
 gensim
 openpyxl
+xlsxwriter
