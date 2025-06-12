@@ -9,3 +9,6 @@ umap-learn
 hdbscan
 sentence-transformers
 gensim
+sys
+types
+torch
