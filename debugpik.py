@@ -14,6 +14,12 @@ from hdbscan import HDBSCAN
 from sentence_transformers import SentenceTransformer
 from gensim.corpora import Dictionary
 from gensim.models import CoherenceModel
+import sys
+import types
+import torch
+
+if isinstance(torch.classes, types.ModuleType):
+    sys.modules['torch.classes'].__path__ = []
 
 try:
     if hasattr(torch, "_classes") and hasattr(torch._classes, "__path__"):
