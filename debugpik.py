@@ -340,7 +340,7 @@ if st.button("Ekstraksi Topik"):
             st.error("Semua dokumen kosong setelah preprocessing.")
             st.stop()
         texts_for_topic = [processed_texts[i] for i in valid_indices]
-    
+
     with st.spinner("Memuat model embedding..."):
         try:
             embedding_model = SentenceTransformer(embed_option)
@@ -349,19 +349,51 @@ if st.button("Ekstraksi Topik"):
             st.stop()
 
     with st.spinner("Menjalankan BERTopic..."):
-        umap_model = UMAP(n_neighbors=n_neighbors, n_components=n_components, min_dist=min_dist, metric=umap_metric, random_state=int(random_state))
-        hdbscan_model = HDBSCAN(min_cluster_size=int(min_cluster_size), min_samples=int(min_samples) or None, metric=hdbscan_metric, cluster_selection_method=cluster_selection_method, prediction_data=True)
-        topic_model = BERTopic(language=language_choice if language_choice != "multilingual" else None, embedding_model=embedding_model, umap_model=umap_model, hdbscan_model=hdbscan_model, calculate_probabilities=calculate_prob, verbose=verbose)
+        umap_model = UMAP(
+            n_neighbors=n_neighbors,
+            n_components=n_components,
+            min_dist=min_dist,
+            metric=umap_metric,
+            random_state=int(random_state)
+        )
+
+        hdbscan_model = HDBSCAN(
+            min_cluster_size=int(min_cluster_size),
+            min_samples=(int(min_samples) if int(min_samples) > 0 else None),
+            metric=hdbscan_metric,
+            cluster_selection_method=cluster_selection_method,
+            prediction_data=True
+        )
+        topic_model = BERTopic(
+            language=language_choice if language_choice != "multilingual" else None,
+            embedding_model=embedding_model,
+            umap_model=umap_model,
+            hdbscan_model=hdbscan_model,
+            calculate_probabilities=calculate_prob,
+            verbose=verbose
+        )
         topics, probs = topic_model.fit_transform(texts_for_topic)
 
-    st.subheader("Topic Info")
-    topic_info = topic_model.get_topic_info()
-    st.dataframe(topic_info)
-    
-    st.subheader("Visualisasi Topik")
-    fig = topic_model.visualize_topics()
-    st.plotly_chart(fig, use_container_width=True)
+    topic_info = topic_model.get_topic_info()  
+    non_outlier_topics = topic_info[topic_info.Topic != -1]
+    jumlah_non_outlier = non_outlier_topics.shape[0]
 
+    st.subheader("Topic Info")
+    st.dataframe(topic_info)
+
+    st.subheader("Visualisasi Topik")
+    if jumlah_non_outlier <= 2:
+        st.warning(
+            f"Jumlah topik non-outlier hanya {jumlah_non_outlier}. "
+            "Visualisasi interaktif topik tidak dapat dilakukan, tetapi Anda tetap dapat mengunduh hasil."
+        )
+    else:
+        try:
+            fig = topic_model.visualize_topics()
+            st.plotly_chart(fig, use_container_width=True)
+        except Exception as e:
+            st.warning(f"Visualisasi topik gagal: {e}. Anda tetap dapat mengunduh hasil di bawah.")
+    
     df_result = df_filtered.copy().reset_index(drop=True)
     full_topics = [-1] * len(df_result)
     for idx, t in zip(valid_indices, topics):
@@ -370,7 +402,7 @@ if st.button("Ekstraksi Topik"):
     df_result["Topic_Label"] = df_result["Topic"].apply(
         lambda tid: "Outlier" if tid == -1 else f"{tid}: " + ", ".join([w for w, _ in topic_model.get_topic(tid)][:3])
     )
-
+    
     info_rows = []
     for row in topic_info.itertuples():
         tw = topic_model.get_topic(row.Topic)
@@ -388,18 +420,20 @@ if st.button("Ekstraksi Topik"):
             df_topics.to_excel(writer, index=False, sheet_name='Topic_Info')
             for sheet_name, df_ in [("Hasil_Topik", df_docs), ("Topic_Info", df_topics)]:
                 worksheet = writer.sheets[sheet_name]
-                for idx, col_name in enumerate(df_.columns):
+                for idx_col, col_name in enumerate(df_.columns):
                     series = df_[col_name].astype(str)
                     max_len = min(max(series.map(len).max(), len(col_name)) + 2, 30)
-                    worksheet.set_column(idx, idx, max_len)
+                    worksheet.set_column(idx_col, idx_col, max_len)
         return output.getvalue()
 
     excel_data = to_excel_two_sheets(df_result, df_topic_info)
     st.download_button(
-        label="Download .xlsx",
+        label="Download Hasil Topik (.xlsx)",
         data=excel_data,
         file_name='hasil_topik_BERTopic.xlsx',
         mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
-
-st.markdown("<div style='text-align:center;color:gray;'>Developed by Mesakh Besta Anugrah • OJK Internship 2025</div>", unsafe_allow_html=True)
+st.markdown(
+    "<div style='text-align:center;color:gray;'>Developed by Mesakh Besta Anugrah • OJK Internship 2025</div>",
+    unsafe_allow_html=True
+)
