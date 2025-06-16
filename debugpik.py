@@ -323,7 +323,6 @@ hdbscan_metric = st.sidebar.selectbox("metric", ["euclidean", "manhattan", "cosi
 cluster_selection_method = st.sidebar.selectbox("cluster_selection_method", ["eom", "leaf"])
 
 if st.button("Ekstraksi Topik"):
-    # 1. Preprocessing
     with st.spinner("Preprocessing data..."):
         df_filtered = df[df[col].notna()].copy()
         texts_raw = df_filtered[col].astype(str).tolist()
@@ -342,7 +341,6 @@ if st.button("Ekstraksi Topik"):
             st.stop()
         texts_for_topic = [processed_texts[i] for i in valid_indices]
 
-    # 2. Load embedding model
     with st.spinner("Memuat model embedding..."):
         try:
             embedding_model = SentenceTransformer(embed_option)
@@ -350,7 +348,6 @@ if st.button("Ekstraksi Topik"):
             st.error(f"Gagal memuat model embedding: {e}")
             st.stop()
 
-    # 3. Jalankan BERTopic
     with st.spinner("Menjalankan BERTopic..."):
         umap_model = UMAP(
             n_neighbors=n_neighbors,
@@ -359,7 +356,7 @@ if st.button("Ekstraksi Topik"):
             metric=umap_metric,
             random_state=int(random_state)
         )
-        # Jika min_samples == 0, HDBSCAN akan atur auto menjadi None => gunakan None jika 0
+
         hdbscan_model = HDBSCAN(
             min_cluster_size=int(min_cluster_size),
             min_samples=(int(min_samples) if int(min_samples) > 0 else None),
@@ -377,19 +374,14 @@ if st.button("Ekstraksi Topik"):
         )
         topics, probs = topic_model.fit_transform(texts_for_topic)
 
-    # 4. Ambil info topik
-    topic_info = topic_model.get_topic_info()  # DataFrame dengan kolom: Topic, Count, Name
-    # Hitung jumlah topik non-outlier (Topic != -1)
-    # Biasanya baris pertama di topic_info adalah -1 (Outlier), jadi periksa
+    topic_info = topic_model.get_topic_info()  
     non_outlier_topics = topic_info[topic_info.Topic != -1]
     jumlah_non_outlier = non_outlier_topics.shape[0]
 
     st.subheader("Topic Info")
     st.dataframe(topic_info)
 
-    # 5. Visualisasi Topik dengan pengecekan jumlah
     st.subheader("Visualisasi Topik")
-    # Jika terlalu sedikit topik non-outlier (misal <=1), skip visualisasi interaktif
     if jumlah_non_outlier <= 1:
         st.warning(
             f"Jumlah topik non-outlier hanya {jumlah_non_outlier}. "
@@ -402,7 +394,6 @@ if st.button("Ekstraksi Topik"):
         except Exception as e:
             st.warning(f"Visualisasi topik gagal: {e}. Anda tetap dapat mengunduh hasil di bawah.")
     
-    # 6. Bangun DataFrame hasil dengan kolom Topic & Label
     df_result = df_filtered.copy().reset_index(drop=True)
     full_topics = [-1] * len(df_result)
     for idx, t in zip(valid_indices, topics):
@@ -412,7 +403,6 @@ if st.button("Ekstraksi Topik"):
         lambda tid: "Outlier" if tid == -1 else f"{tid}: " + ", ".join([w for w, _ in topic_model.get_topic(tid)][:3])
     )
 
-    # 7. Buat DataFrame info topik ringkas (Topic, Count, Top_Words)
     info_rows = []
     for row in topic_info.itertuples():
         tw = topic_model.get_topic(row.Topic)
@@ -423,13 +413,11 @@ if st.button("Ekstraksi Topik"):
         })
     df_topic_info = pd.DataFrame(info_rows)
 
-    # 8. Fungsi untuk membuat file Excel dua sheets
     def to_excel_two_sheets(df_docs, df_topics):
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
             df_docs.to_excel(writer, index=False, sheet_name='Hasil_Topik')
             df_topics.to_excel(writer, index=False, sheet_name='Topic_Info')
-            # Atur lebar kolom agar rapi
             for sheet_name, df_ in [("Hasil_Topik", df_docs), ("Topic_Info", df_topics)]:
                 worksheet = writer.sheets[sheet_name]
                 for idx_col, col_name in enumerate(df_.columns):
@@ -438,7 +426,6 @@ if st.button("Ekstraksi Topik"):
                     worksheet.set_column(idx_col, idx_col, max_len)
         return output.getvalue()
 
-    # 9. Buat tombol download (selalu muncul)
     excel_data = to_excel_two_sheets(df_result, df_topic_info)
     st.download_button(
         label="Download Hasil Topik (.xlsx)",
@@ -447,7 +434,6 @@ if st.button("Ekstraksi Topik"):
         mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
 
-# Footer
 st.markdown(
     "<div style='text-align:center;color:gray;'>Developed by Mesakh Besta Anugrah • OJK Internship 2025</div>",
     unsafe_allow_html=True
