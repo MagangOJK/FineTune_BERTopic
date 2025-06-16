@@ -17,6 +17,8 @@ from gensim.models import CoherenceModel
 import sys
 import types
 import torch
+from scipy.sparse import diags
+import numpy as np
 
 if isinstance(torch.classes, types.ModuleType):
     sys.modules['torch.classes'].__path__ = []
